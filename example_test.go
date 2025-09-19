@@ -32,6 +32,7 @@ type RedisConfig struct {
 	DB   int
 }
 
+
 func TestApp(t *testing.T) {
 	ctx := context.Background()
 
@@ -53,7 +54,10 @@ func TestApp(t *testing.T) {
 	if appHost == "" {
 		appHost = "localhost"
 	}
-	appPort := os.Getenv("APP_PORT")
+	appPort := os.Getenv("PORT")
+	if appPort == "" {
+		appPort = os.Getenv("APP_PORT")
+	}
 	if appPort == "" {
 		appPort = "8080"
 	}
@@ -320,7 +324,18 @@ func testAppIntegration(t *testing.T, ctx context.Context, baseURL string) {
 	})
 
 	t.Run("Test Data Endpoint", func(t *testing.T) {
-		resp, err := client.Get(baseURL + "/api/test")
+		// First, insert some test data
+		newData := TestData{Name: "test_endpoint_data", Data: "test_endpoint_value"}
+		jsonData, err := json.Marshal(newData)
+		require.NoError(t, err)
+
+		resp, err := client.Post(baseURL+"/api/data", "application/json", bytes.NewBuffer(jsonData))
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusCreated, resp.StatusCode)
+
+		// Now test the GET endpoint
+		resp, err = client.Get(baseURL + "/api/data")
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
